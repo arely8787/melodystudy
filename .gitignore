@@ -4,6 +4,8 @@
 
 # ── Android (Gradle) ─────────────────────────────────────────
 android/.gradle/
+android/.idea/
+android/.kotlin/
 android/build/
 android/app/build/
 android/local.properties
@@ -13,7 +15,6 @@ android/.cxx/
 android/*.apk
 android/output.json
 android/*.iml
-android/.idea/
 android/misc.xml
 android/deploymentTargetDropDown.xml
 android/render.experimental.xml
