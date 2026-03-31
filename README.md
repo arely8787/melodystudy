@@ -255,6 +255,46 @@ PUT /usuarios/{id}/xp → BD guarda nuevo nivel y progreso
 
 ---
 
+---
+
+## 👤 Registro y personalización
+
+Al crear una cuenta el usuario configura su perfil con los siguientes datos:
+
+| Campo | Descripción |
+|---|---|
+| Avatar | Emoji seleccionado de una galería de 10 opciones |
+| Apodo | Nombre que se muestra en la app |
+| Contraseña | Campo con opción de mostrar/ocultar |
+| Fecha de nacimiento | Seleccionada desde un calendario |
+
+### Galería de avatares disponibles
+
+El usuario elige uno de los siguientes emojis como su avatar personal:
+```
+🐱  🐶  🦊  🐼  🐨
+🦁  🐸  🐧  🦄  🐙
+```
+
+El avatar seleccionado se muestra en:
+- La pantalla de registro (previsualización grande)
+- El header de la app junto al apodo y nivel
+- La pantalla de perfil
+
+### Flujo de registro
+```
+1. Elegir avatar (emoji)
+2. Escribir apodo
+3. Escribir contraseña
+4. Seleccionar fecha de nacimiento
+        ↓
+POST /register → BD guarda el usuario
+        ↓
+Redirige al Login
+```
+
+---
+
 ## 🗄️ Base de datos
 ```
 usuarios
