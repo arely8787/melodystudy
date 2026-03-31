@@ -1,33 +1,51 @@
-# Gradle files
-.gradle/
-build/
+# ══════════════════════════════════════════════════════════════
+#  MelodyStudy — .gitignore
+# ══════════════════════════════════════════════════════════════
 
-# Local configuration file (sdk path, etc)
-local.properties
+# ── Android (Gradle) ─────────────────────────────────────────
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+android/*.apk
+android/output.json
+android/*.iml
+android/.idea/
+android/misc.xml
+android/deploymentTargetDropDown.xml
+android/render.experimental.xml
+android/*.jks
+android/*.keystore
+android/google-services.json
+android/*.hprof
 
-# Log/OS Files
+# ── Backend Java (IntelliJ/Maven) ────────────────────────────
+backend/.idea/
+backend/*.iml
+backend/target/
+backend/audio_files/
+backend/audio/
+
+# Audios generados — no subir binarios al repo
+backend/audio_files/
+backend/temp_*.mp3
+backend/cancion_*.mp3
+
+# ── Python TTS ───────────────────────────────────────────────
+tts/venv/
+tts/__pycache__/
+tts/*.pyc
+tts/*.pyo
+tts/*.pyd
+tts/output_*.mp3
+
+# ── Base de datos ─────────────────────────────────────────────
+database/*.sql.bak
+
+# ── Sistema operativo ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
 *.log
-
-# Android Studio generated files and folders
-captures/
-.externalNativeBuild/
-.cxx/
-*.apk
-output.json
-
-# IntelliJ
-*.iml
-.idea/
-misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
-
-# Keystore files
-*.jks
-*.keystore
-
-# Google Services (e.g. APIs or Firebase)
-google-services.json
-
-# Android Profiling
-*.hprof
