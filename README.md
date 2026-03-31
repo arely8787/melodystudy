@@ -183,6 +183,78 @@ netsh advfirewall firewall add rule name="MelodyStudy 7000" dir=in action=allow 
 
 ---
 
+
+## ⭐ Sistema de XP y Niveles
+
+MelodyStudy usa un sistema de progresión local — el servidor solo guarda
+`nivel` y `progreso` (0.0 – 1.0). Toda la lógica de XP vive en el cliente.
+
+### Acciones que dan XP
+
+| Acción | XP ganado |
+|---|---|
+| Guardar una canción | +5 XP |
+| Aprobar un examen (≥ 60/100) | +10 XP |
+| Examen perfecto (100/100) | +20 XP |
+
+### Tabla de niveles
+
+| Nivel | Título | XP necesario |
+|---|---|---|
+| 1 | Aprendiz | 100 XP |
+| 2 | Estudiante | 200 XP |
+| 3 | Curioso | 350 XP |
+| 4 | Explorador | 500 XP |
+| 5 | Melómano | 700 XP |
+| 6 | Compositor | 950 XP |
+| 7 | Maestro | 1,250 XP |
+| 8 | Virtuoso | 1,600 XP |
+| 9 | Leyenda | 2,000 XP |
+| 10 | MelodyMaster | 2,000 XP *(máximo)* |
+
+### ¿Cómo funciona el cálculo?
+
+El progreso dentro de un nivel se representa como un valor entre `0.0` y `1.0`:
+```
+xpActual  =  progreso  ×  xpMaxDelNivel
+```
+
+Ejemplo: nivel 2, progreso 0.35
+```
+xpActual = 0.35 × 200 = 70 XP
+Faltan   = 200 - 70   = 130 XP para nivel 3
+```
+
+Al ganar XP, si se supera el máximo del nivel actual se sube automáticamente:
+```
+xpNuevo = xpActual + xpGanado
+
+Si xpNuevo ≥ xpMaxDelNivel:
+    xpNuevo -= xpMaxDelNivel
+    nivel++
+    (repite si sigue subiendo varios niveles)
+
+nuevoProgreso = xpNuevo / xpMaxDelNivel(nivelNuevo)
+```
+
+Esto permite subir varios niveles de un solo golpe si el XP ganado
+es suficiente. Al llegar al nivel 10 el progreso se bloquea en `1.0`.
+
+### Flujo completo
+```
+Usuario aprueba examen (80/100)
+        ↓
+xpDeExamen(80) → +10 XP
+        ↓
+aplicarXP(nivelActual, progresoActual, 10)
+        ↓
+UsuarioViewModel actualiza sesión local → header se refresca
+        ↓
+PUT /usuarios/{id}/xp → BD guarda nuevo nivel y progreso
+```
+
+---
+
 ## 🗄️ Base de datos
 ```
 usuarios

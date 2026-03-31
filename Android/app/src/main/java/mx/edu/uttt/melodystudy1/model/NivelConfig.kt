@@ -57,9 +57,9 @@ object NivelConfig {
      * Retorna 0 si reprobó (< 6).
      */
     fun xpDeExamen(calificacion: Int): Int = when {
-        calificacion == 10 -> XP_EXAMEN_PERFECTO
-        calificacion >= 6  -> XP_EXAMEN_APROBADO
-        else               -> 0
+        calificacion == 100 -> XP_EXAMEN_PERFECTO
+        calificacion >= 60  -> XP_EXAMEN_APROBADO
+        else                -> 0
     }
 
     /**

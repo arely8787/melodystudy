@@ -283,11 +283,7 @@ fun MelodyStudyApp(client: OkHttpClient) {
                         idUsuario = sesion?.id ?: 0,
                         onTerminar = { calificacion ->
                             // 1. Calcular XP según calificación (escala 0–100)
-                            val xpGanado = when {
-                                calificacion == 100 -> NivelConfig.XP_EXAMEN_PERFECTO
-                                calificacion >= 60  -> NivelConfig.XP_EXAMEN_APROBADO
-                                else               -> 0
-                            }
+                            val xpGanado = NivelConfig.xpDeExamen(calificacion)
 
                             // 2. Actualizar sesión local
                             if (xpGanado > 0) usuarioViewModel.ganarXP(xpGanado)

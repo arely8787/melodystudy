@@ -59,17 +59,18 @@ class UsuarioViewModel : ViewModel() {
     }
 
     // ── Ganar XP (local, sin llamar al servidor por ahora) ────────────
-    fun ganarXP(xp: Int) {
-        val actual = _sesion.value ?: return
+    fun ganarXP(xpGanado: Int) {
+        val s = _sesion.value ?: return
         val (nuevoNivel, nuevoProgreso) = NivelConfig.aplicarXP(
-            nivelActual    = actual.nivel,
-            progresoActual = actual.progreso,
-            xpGanado       = xp
+            nivelActual    = s.nivel,
+            progresoActual = s.progreso,
+            xpGanado       = xpGanado
         )
-        _sesion.value = actual.copy(nivel = nuevoNivel, progreso = nuevoProgreso)
-        // TODO (siguiente fase): sincronizar con BD via PUT /usuarios/{id}/progreso
+        _sesion.value = s.copy(
+            nivel    = nuevoNivel,
+            progreso = nuevoProgreso
+        )
     }
-
     // ── Cerrar sesión ─────────────────────────────────────────────────
     fun cerrarSesion() {
         _sesion.value = null
