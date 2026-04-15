@@ -1,6 +1,6 @@
 # 🎵 MelodyStudy
 
-![Preview](https://raw.githubusercontent.com/arely8787/melodystudy/main/Assets/app_preview.png)
+![Preview](https://raw.githubusercontent.com/arely8787/melodystudy/main/Assets/inicio.png)
 
 Aplicación educativa que convierte temas de estudio en canciones generadas con Inteligencia Artificial. El usuario escribe un tema, elige un género musical y la app genera una canción con letra educativa, audio sintetizado y un examen de comprensión automático.
 
