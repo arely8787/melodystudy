@@ -33,7 +33,7 @@ Se guarda en BD + se genera examen automáticamente
                                           ┌───────────────┼───────────────┐
                                           ▼               ▼               ▼
                                     ┌──────────┐  ┌──────────────┐  ┌──────────┐
-                                    │  MySQL   │  │  Audio AI    │  Groq AI │
+                                    │  MySQL   │  │  Audio AI    │  │  Groq AI │
                                     │  Base de │  │  Python +    │  │  (LLM)   │
                                     │  Datos   │  │  Coqui TTS   │  └──────────┘
                                     └──────────┘  │  RVC (Voice) │ 
