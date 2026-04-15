@@ -51,7 +51,7 @@ Se guarda en BD + se genera examen automáticamente
 
 ![Home](https://raw.githubusercontent.com/arely8787/melodystudy/main/Assets/Inicio.jpeg)
 
-![Generación](https://raw.githubusercontent.com/arely8787/melodystudy/main/Assets/Crear-03.jpeg)
+![Generación](https://raw.githubusercontent.com/arely8787/melodystudy/main/Assets/Crear-01.jpeg)
 
 ![Examen](https://raw.githubusercontent.com/arely8787/melodystudy/main/Assets/Estudiar-04.jpeg)
 ---
