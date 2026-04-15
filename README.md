@@ -6,11 +6,19 @@ Aplicación educativa que convierte temas de estudio en canciones generadas con 
 
 ## 🧠 ¿Cómo funciona?
 ```
-Usuario escribe un tema  →  IA genera la letra  →  TTS convierte a audio
+Usuario escribe un tema  
         ↓
-   Se guarda en BD  →  IA genera examen  →  Usuario estudia y se evalúa
+IA genera la letra (Groq)
         ↓
-   Sistema de XP y niveles según desempeño
+Coqui TTS genera voz base (español neuronal)
+        ↓
+RVC convierte la voz al timbre personalizado (Ifu)
+        ↓
+MusicGen genera música instrumental
+        ↓
+Mezcla inteligente (ducking + mastering)
+        ↓
+Se guarda en BD + se genera examen automáticamente
 ```
 
 ---
@@ -25,10 +33,13 @@ Usuario escribe un tema  →  IA genera la letra  →  TTS convierte a audio
                                           ┌───────────────┼───────────────┐
                                           ▼               ▼               ▼
                                     ┌──────────┐  ┌──────────────┐  ┌──────────┐
-                                    │  MySQL   │  │  TTS Service │  │  Groq AI │
+                                    │  MySQL   │  │  Audio AI    │  Groq AI │
                                     │  Base de │  │  Python +    │  │  (LLM)   │
-                                    │  Datos   │  │  Kokoro      │  └──────────┘
-                                    └──────────┘  └──────────────┘
+                                    │  Datos   │  │  Coqui TTS   │  └──────────┘
+                                    └──────────┘  │  RVC (Voice) │ 
+                                                  │  MusicGen    │ 
+                                                  └──────────────┘
+
 ```
 
 ---
@@ -38,7 +49,7 @@ Usuario escribe un tema  →  IA genera la letra  →  TTS convierte a audio
 melodystudy/
 ├── Android/          # App móvil Android (Kotlin + Jetpack Compose)
 ├── Backend/          # API REST (Java 21 + Javalin + MySQL)
-├── Tts/              # Servicio de texto a voz (Python + Kokoro)
+├── Tts/              # Servicio de audio IA (Coqui + RVC + MusicGen + mezcla)
 ├── Database/         # Script SQL de la base de datos
 └── README.md
 ```
@@ -82,28 +93,25 @@ Verifica que se creó la base de datos `melodydb` con las tablas:
 
 ---
 
-### 3. Servicio TTS (Python)
+## 3. Servicio de Audio IA (Python)
+
+Este servicio genera canciones completas usando múltiples modelos de IA:
+
+- **Coqui TTS** → genera voz neuronal en español
+- **RVC (Retrieval-based Voice Conversion)** → convierte la voz al timbre personalizado (ej: Ifu)
+- **MusicGen** → genera música instrumental
+- **FFmpeg** → mezcla, efectos, compresión y mastering final
+
+### Instalación
+
 ```bash
 cd Tts
 
-# Crear entorno virtual
 python -m venv venv
-
-# Activar entorno (Windows)
 venv\Scripts\activate
 
-# Activar entorno (Mac/Linux)
-source venv/bin/activate
-
-# Instalar dependencias
 pip install -r requirements.txt
-
-# Levantar servidor
-python server.py
 ```
-
-> ✅ El servicio TTS corre en `http://localhost:5050`
-
 ---
 
 ### 4. Backend (Java)
@@ -175,7 +183,7 @@ netsh advfirewall firewall add rule name="MelodyStudy 7000" dir=in action=allow 
 | Función | Descripción |
 |---|---|
 | 🎵 Generar canción | La IA crea letra educativa según tema y género |
-| 🔊 Audio sintetizado | El TTS convierte la letra en MP3 con Kokoro |
+| 🎤 Canción con IA | Voz neuronal + conversión de timbre + música generada automáticamente |
 | 📝 Examen automático | La IA genera 5 preguntas de opción múltiple |
 | ⭐ Sistema de XP | Gana puntos al guardar canciones y aprobar exámenes |
 | 🏆 Niveles | Sube de nivel acumulando XP |
@@ -338,8 +346,37 @@ usuarios
 
 **TTS**
 - Python 3
-- Kokoro (modelo ONNX)
+- Coqui TTS (voz neuronal)
+- RVC (voice conversion)
+- MusicGen (generación musical)
+- FFmpeg (procesamiento de audio)
 - Flask
+
+---
+
+## 🎧 Pipeline de generación de audio
+
+El sistema genera cada canción en múltiples etapas:
+
+1. Coqui TTS → voz base (~6s)
+2. RVC → conversión de voz (~20s)
+3. MusicGen → música (~40s)
+4. Ducking → mezcla inteligente
+5. Mastering → compresión y limitación final
+
+⏱️ Tiempo total: ~70–80 segundos por canción
+
+---
+
+## 🤖 Inteligencia Artificial aplicada
+
+MelodyStudy integra múltiples modelos de IA especializados:
+
+- LLM (Groq) → generación de contenido educativo
+- TTS neuronal → síntesis de voz realista
+- Voice Conversion (RVC) → personalización de voz
+- Generación musical (MusicGen) → creación de acompañamiento
+- DSP (FFmpeg) → mezcla y mastering automático
 
 ---
 
