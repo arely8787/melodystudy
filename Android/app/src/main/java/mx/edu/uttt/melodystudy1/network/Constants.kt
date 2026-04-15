@@ -1,7 +1,8 @@
 package mx.edu.uttt.melodystudy1.network
 
 object Constants {
-    private const val HOST = "172.20.10.3"
+    //private const val HOST = "172.20.10.3" //tel romina
+    private const val HOST = "192.168.1.150" //casa
     const val BASE_URL = "http://$HOST:7000"
 
     // ── Canciones ─────────────────────────────────────────────────────
@@ -13,6 +14,7 @@ object Constants {
 
     // ── Examen ────────────────────────────────────────────────────────
     const val GENERATE_EXAM = "$BASE_URL/generate-exam"
+
 
     // ── Canciones guardadas del usuario ───────────────────────────────
     /** Usar como: "${CANCIONES_USUARIO}/123" */
@@ -31,4 +33,6 @@ object Constants {
 
     /** PUT "${USUARIO_XP}/123/xp"  body: {"nivel": 2, "progreso": 0.35} */
     const val USUARIO_XP = "$BASE_URL/usuarios"
+
+    const val ANALYZE_TXT = "$BASE_URL/analyze-txt"
 }

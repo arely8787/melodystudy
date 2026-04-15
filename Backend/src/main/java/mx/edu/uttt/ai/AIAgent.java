@@ -168,4 +168,13 @@ public class AIAgent {
         }
         return sb.toString();
     }
+
+    public String askRaw(String prompt) throws Exception {
+        // Llama directamente a llamarGroq sin el system prompt de canciones
+        String systemPrompt = """
+            Eres un asistente educativo.
+            Responde ÚNICAMENTE con JSON válido, sin markdown, sin backticks, sin texto extra.
+            """;
+        return llamarGroq(systemPrompt, prompt);
+    }
 }

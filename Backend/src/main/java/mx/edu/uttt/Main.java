@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class Main {
 
-    record Song(long id, String tema, String genero, String letra, String audioPath) {}
+    record Song(long id, String audioKey, String tema, String genero, String letra, String audioPath) {}
 
     static final Map<Long, Song> songs = new ConcurrentHashMap<>();
     static final AtomicLong      idGen = new AtomicLong(1);
@@ -32,11 +32,28 @@ public class Main {
     static final AIAgent    agent = API_KEY.isEmpty() ? null : new AIAgent(API_KEY);
     static final TTSService tts   = new TTSService();
 
-    static final String SERVER_HOST = "172.20.10.3";
+    //static final String SERVER_HOST = "172.20.10.3";
+    static final String SERVER_HOST = "192.168.1.150";
 
     public static void main(String[] args) throws IOException {
 
         Files.createDirectories(AUDIO_DIR);
+
+        // Limpia temporales huérfanos al arrancar
+        try (var stream = Files.list(AUDIO_DIR)) {
+            stream.filter(p -> p.getFileName().toString().startsWith("temp_")
+                            && p.getFileName().toString().endsWith(".mp3"))
+                    .forEach(p -> {
+                        try {
+                            Files.delete(p);
+                            System.out.println("🗑️ Limpiado: " + p.getFileName());
+                        } catch (IOException e) {
+                            System.err.println("⚠️ No se pudo borrar " + p + ": " + e.getMessage());
+                        }
+                    });
+        } catch (Exception e) {
+            System.err.println("⚠️ Error limpiando temporales: " + e.getMessage());
+        }
 
         Javalin app = Javalin.create(config ->
                 config.plugins.enableCors(cors ->
@@ -69,30 +86,29 @@ public class Main {
                 letra = fallbackLetra(tema);
             }
 
-            long id   = idGen.getAndIncrement();
-            Song song = new Song(id, tema, genero, letra, null);
-            songs.put(id, song);
+            long   id       = idGen.getAndIncrement();
+            String audioKey = java.util.UUID.randomUUID().toString(); // UUID único, nunca se repite
+            songs.put(id, new Song(id, audioKey, tema, genero, letra, null));
 
-            final long   songId      = id;
-            final String textoFinal  = letra;
-            final String generoFinal = genero;
+            final long   songId        = id;
+            final String textoFinal    = letra;
+            final String generoFinal   = genero;
+            final String audioKeyFinal = audioKey;
 
             Thread.ofVirtual().start(() -> {
-                Path mp3 = tts.textToSpeech(textoFinal, songId, generoFinal);
+                Path mp3 = tts.textToSpeech(textoFinal, audioKeyFinal, generoFinal);
                 if (mp3 != null) {
-                    songs.put(songId, new Song(songId,
-                            songs.get(songId).tema(),
-                            songs.get(songId).genero(),
-                            songs.get(songId).letra(),
-                            mp3.toString()));
+                    Song s = songs.get(songId);
+                    songs.put(songId, new Song(songId, audioKeyFinal,
+                            s.tema(), s.genero(), s.letra(), mp3.toString()));
                     System.out.println("🎵 MP3 listo: " + mp3.toAbsolutePath());
                 }
             });
 
-            String audioUrl = "http://" + SERVER_HOST + ":7000/audio/temp/" + id;
-
+            // Devuelve audioKey al cliente para que lo use en el polling y al guardar
+            String audioUrl = "http://" + SERVER_HOST + ":7000/audio/temp/" + audioKey;
             ctx.contentType("application/json");
-            ctx.result(buildSongJson(id, tema, genero, letra, audioUrl, -1));
+            ctx.result(buildSongJson(id, audioKey, tema, genero, letra, audioUrl, -1));
         });
 
         // ── POST /save-song ───────────────────────────────────────────
@@ -108,13 +124,14 @@ public class Main {
             String tema      = body.optString("tema",       "").trim();
             String genero    = body.optString("genero",     "pop").trim();
             String letra     = body.optString("letra",      "").trim();
-            long   tempId    = body.optLong  ("temp_id",    -1);
+            String audioKey  = body.optString("audio_key",  "").trim(); // UUID del temporal
 
             if (idUsuario <= 0 || tema.isEmpty() || letra.isEmpty()) {
                 ctx.status(400).result("{\"error\":\"id_usuario, tema y letra son requeridos\"}");
                 return;
             }
 
+            // 1. Primero guardar en BD para obtener el dbCancionId
             long dbCancionId;
             try {
                 dbCancionId = guardarCancionBD(idUsuario, tema, genero, letra, "");
@@ -123,30 +140,33 @@ public class Main {
                 return;
             }
 
+            // 2. Ahora mover temp_{uuid}.mp3 → cancion_{dbId}.mp3
             String audioUrlFinal = "";
-            if (tempId > 0) {
-                Path tempMp3  = AUDIO_DIR.resolve("temp_" + tempId + ".mp3");
+            if (!audioKey.isEmpty()) {
+                Path tempMp3  = AUDIO_DIR.resolve("temp_" + audioKey + ".mp3");
                 Path finalMp3 = AUDIO_DIR.resolve("cancion_" + dbCancionId + ".mp3");
                 try {
-                    if (Files.exists(tempMp3)) {
-                        Files.move(tempMp3, finalMp3, StandardCopyOption.REPLACE_EXISTING);
-                        audioUrlFinal = "http://" + SERVER_HOST + ":7000/audio/cancion/" + dbCancionId;
-                    } else {
+                    // Si el TTS todavía está procesando, esperar hasta 30 segundos
+                    if (!Files.exists(tempMp3)) {
                         int intentos = 0;
                         while (!Files.exists(tempMp3) && intentos < 6) {
                             Thread.sleep(5000);
                             intentos++;
                         }
-                        if (Files.exists(tempMp3)) {
-                            Files.move(tempMp3, finalMp3, StandardCopyOption.REPLACE_EXISTING);
-                            audioUrlFinal = "http://10.0.2.2:7000/audio/cancion/" + dbCancionId;
-                        }
+                    }
+                    if (Files.exists(tempMp3)) {
+                        Files.move(tempMp3, finalMp3, StandardCopyOption.REPLACE_EXISTING);
+                        audioUrlFinal = "http://" + SERVER_HOST + ":7000/audio/cancion/" + dbCancionId;
+                        System.out.println("✅ MP3 movido: " + finalMp3.toAbsolutePath());
+                    } else {
+                        System.err.println("⚠️ temp_" + audioKey + ".mp3 no encontrado tras espera");
                     }
                 } catch (Exception e) {
                     System.err.println("⚠️ No se pudo mover MP3: " + e.getMessage());
                 }
             }
 
+            // 3. Actualizar audio_url en BD si se movió el archivo
             if (!audioUrlFinal.isEmpty()) {
                 try { actualizarAudioUrlBD(dbCancionId, audioUrlFinal); }
                 catch (Exception e) {
@@ -156,6 +176,7 @@ public class Main {
 
             System.out.println("✅ Canción guardada en BD, id=" + dbCancionId + ", audio=" + audioUrlFinal);
 
+            // 4. Generar y guardar examen
             String examJson;
             if (agent != null) {
                 try {
@@ -181,13 +202,16 @@ public class Main {
                     + ",\"preguntas\":" + examJson + "}");
         });
 
-        // ── GET /audio/temp/{id} ──────────────────────────────────────
-        app.get("/audio/temp/{id}", ctx -> {
-            long id;
-            try { id = Long.parseLong(ctx.pathParam("id")); }
-            catch (NumberFormatException e) { ctx.status(400).result("ID inválido"); return; }
-            Path mp3 = AUDIO_DIR.resolve("temp_" + id + ".mp3");
-            servirMp3(ctx, mp3, "temp_" + id);
+        // ── GET /audio/temp/{audioKey} ────────────────────────────────
+        // Ahora recibe UUID (String), no long
+        app.get("/audio/temp/{audioKey}", ctx -> {
+            String audioKey = ctx.pathParam("audioKey");
+            if (audioKey.isBlank()) {
+                ctx.status(400).result("Key inválida");
+                return;
+            }
+            Path mp3 = AUDIO_DIR.resolve("temp_" + audioKey + ".mp3");
+            servirMp3(ctx, mp3, "temp_" + audioKey);
         });
 
         // ── GET /audio/cancion/{dbId} ─────────────────────────────────
@@ -199,7 +223,7 @@ public class Main {
             servirMp3(ctx, mp3, "cancion_" + dbId);
         });
 
-        // ── GET /audio/{id} (compatibilidad) ─────────────────────────
+        // ── GET /audio/{id} (compatibilidad con canciones antiguas) ──
         app.get("/audio/{id}", ctx -> {
             long id;
             try { id = Long.parseLong(ctx.pathParam("id")); }
@@ -236,8 +260,7 @@ public class Main {
             }
         });
 
-        // ── PUT /examenes/{idCancion}/calificacion ────────────────────
-        // ── PUT /examenes/{id_cancion}/calificacion ───────────────────────
+        // ── PUT /examenes/{id_cancion}/calificacion ───────────────────
         app.put("/examenes/{id_cancion}/calificacion", ctx -> {
             long idCancion;
             try { idCancion = Long.parseLong(ctx.pathParam("id_cancion")); }
@@ -271,7 +294,6 @@ public class Main {
         });
 
         // ── PUT /usuarios/{id}/xp ─────────────────────────────────────
-        // Actualiza nivel y progreso del usuario tras ganar XP
         app.put("/usuarios/{id}/xp", ctx -> {
             int idUsuario;
             try { idUsuario = Integer.parseInt(ctx.pathParam("id")); }
@@ -309,6 +331,64 @@ public class Main {
             songs.remove(id);
             ctx.result("Eliminado");
         });
+
+        // ── POST /analyze-txt ─────────────────────────────────────────
+        app.post("/analyze-txt", ctx -> {
+            JSONObject body;
+            try { body = new JSONObject(ctx.body()); }
+            catch (Exception e) {
+                ctx.status(400).result("{\"error\":\"Body inválido\"}"); return;
+            }
+
+            String contenido = body.optString("contenido", "").trim();
+            if (contenido.isEmpty()) {
+                ctx.status(400).result("{\"error\":\"contenido es requerido\"}"); return;
+            }
+
+            if (contenido.length() > 3000) contenido = contenido.substring(0, 3000);
+
+            if (agent == null) {
+                ctx.status(503).result("{\"error\":\"IA no disponible\"}"); return;
+            }
+
+            try {
+                String prompt = """
+                    Analiza el siguiente texto educativo y responde ÚNICAMENTE con un JSON válido sin markdown.
+                    El JSON debe tener exactamente estos campos:
+                    {
+                      "tema": "título corto del tema principal (máximo 8 palabras)",
+                      "resumen": "resumen educativo de 3-5 oraciones con los conceptos más importantes"
+                    }
+                    
+                    Texto a analizar:
+                    """ + contenido;
+
+                String respuesta = agent.askRaw(prompt);
+
+                respuesta = respuesta.trim()
+                        .replaceAll("^```json\\s*", "")
+                        .replaceAll("^```\\s*",     "")
+                        .replaceAll("\\s*```$",     "")
+                        .trim();
+
+                int inicio = respuesta.indexOf('{');
+                int fin    = respuesta.lastIndexOf('}');
+                if (inicio >= 0 && fin > inicio) {
+                    respuesta = respuesta.substring(inicio, fin + 1);
+                }
+
+                JSONObject resultado = new JSONObject(respuesta);
+
+                if (!resultado.has("tema") || !resultado.has("resumen")) {
+                    throw new Exception("Respuesta IA incompleta");
+                }
+
+                ctx.contentType("application/json").result(resultado.toString());
+
+            } catch (Exception e) {
+                ctx.status(500).result("{\"error\":\"Error IA: " + e.getMessage() + "\"}");
+            }
+        });
     }
 
     // ── Helper: servir MP3 ────────────────────────────────────────────
@@ -319,6 +399,8 @@ public class Main {
         }
         ctx.contentType("audio/mpeg");
         ctx.header("Content-Disposition", "inline; filename=\"" + nombre + ".mp3\"");
+        long lastMod = Files.getLastModifiedTime(mp3).toMillis();
+        ctx.header("Last-Modified", String.valueOf(lastMod));
         ctx.result(Files.newInputStream(mp3));
     }
 
@@ -481,11 +563,15 @@ public class Main {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
-    static String buildSongJson(long id, String tema, String genero,
+    // audioKey agregado al JSON para que el cliente lo use en /save-song
+    static String buildSongJson(long id, String audioKey, String tema, String genero,
                                 String letra, String audioUrl, long dbId) {
-        return "{\"id\":"     + id               + ",\"dbId\":"   + dbId
-                + ",\"tema\":"   + jsonStr(tema)    + ",\"genero\":" + jsonStr(genero)
-                + ",\"letra\":"  + jsonStr(letra)   + ",\"audioUrl\":" + jsonStr(audioUrl) + "}";
+        return "{\"id\":"       + id                + ",\"dbId\":"    + dbId
+                + ",\"audioKey\":" + jsonStr(audioKey) // ← cliente lo guarda y lo manda en save-song
+                + ",\"tema\":"     + jsonStr(tema)
+                + ",\"genero\":"   + jsonStr(genero)
+                + ",\"letra\":"    + jsonStr(letra)
+                + ",\"audioUrl\":" + jsonStr(audioUrl) + "}";
     }
 
     static String jsonStr(String s) {

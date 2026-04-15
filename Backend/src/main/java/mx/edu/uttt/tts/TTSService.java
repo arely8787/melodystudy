@@ -15,12 +15,12 @@ public class TTSService {
     /**
      * Llama al microservicio Python TTS y guarda el MP3 en disco.
      *
-     * @param text   Letra de la canción
-     * @param songId ID único de la canción (para el nombre del archivo)
-     * @param genero Género musical: "pop", "rock", "balada", "clasica"
+     * @param text     Letra de la canción
+     * @param audioKey UUID único de la canción (para el nombre del archivo)
+     * @param genero   Género musical: "pop", "rock", "balada", "clasica"
      * @return ruta absoluta del archivo MP3, o null si falla
      */
-    public Path textToSpeech(String text, long songId, String genero) {
+    public Path textToSpeech(String text, String audioKey, String genero) {
         try {
             if (text.length() > 500) text = text.substring(0, 500);
 
@@ -40,10 +40,9 @@ public class TTSService {
                     + " | bytes: " + res.body().length + " | género: " + genero);
 
             if (res.statusCode() == 200 && res.body().length > 0) {
-                // ← CAMBIO: guardar en audio_files/temp_{id}.mp3 directamente
                 Path audioDir = Path.of("audio_files");
                 Files.createDirectories(audioDir);
-                Path mp3 = audioDir.resolve("temp_" + songId + ".mp3");
+                Path mp3 = audioDir.resolve("temp_" + audioKey + ".mp3"); // ← UUID en lugar de long
                 Files.write(mp3, res.body());
                 System.out.println("🎵 TTS guardado en: " + mp3.toAbsolutePath());
                 return mp3;
@@ -57,9 +56,9 @@ public class TTSService {
         return null;
     }
 
-    /** Compatibilidad: sin género usa pop por defecto. */
-    public Path textToSpeech(String text, long songId) {
-        return textToSpeech(text, songId, "pop");
+    /** Compatibilidad legacy — sin género usa pop por defecto. */
+    public Path textToSpeech(String text, String audioKey) {
+        return textToSpeech(text, audioKey, "pop");
     }
 
     private static String jsonString(String s) {
